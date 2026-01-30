@@ -1,36 +1,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
 
-#define DEFAULT_PORT 5555
-
-int game()
-{
-}
-
-volatile sig_atomic_t serverRunning = 1;
-void handleSignal()
-{
-	(void)sig;
-	serverRunning = 0;
-}
+extern volatile sig_atomic_t serverRunning;
 
 static int createPassiveSocket(const in_port_t port)
 {
 	const int fd = socket(AF_INET, SOCK_STREAM, 0);
 	if(fd < 0)
 	{
-		errnoPrint("socket");
-		return -1
+		perror("socket");
+		return -1;
 	}
 
 	const int opt = 1;
-	if(setsockopt(fd, SOL_SOCKET, REUSEADDR, &opt, sizeof(int)) < 0)
+	if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(int)) < 0)
 	{
-		errnoPrint("setsockopt");
+		perror("setsockopt");
 		close(fd);
 		return -1;
 	}
@@ -41,14 +31,14 @@ static int createPassiveSocket(const in_port_t port)
 	server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	if(bind(fd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
 	{
-		errnoPrint("bind");
+		perror("bind");
 		close(fd);
 		return -1;
 	}
 
 	if(listen(fd, 2) < 0)
 	{
-		errnoPrint("listen");
+		perror("listen");
 		close(fd);
 		return -1;
 	}
@@ -61,7 +51,7 @@ int connectionHandler(const in_port_t port)
 	const int fd = createPassiveSocket(port);
 	if(fd < 0)
 	{
-		errnoPrint("Unable to create Server socket");
+		perror("Unable to create Server socket");
 		return -1;
 	}
 
@@ -74,18 +64,11 @@ int connectionHandler(const in_port_t port)
 			{
 				continue;
 			}
-			fprintf("accept");
+			fprintf(stderr, "accept");
 			continue;
 		}
 
 		fprintf(stderr, "Acceepted new connection (fd=%d)\n", clientfd);
-		game();
 	}
-}
-
-int main()
-{
-	
-
-	return != -1 ? EXIT_SUCCESS : EXIT_FAILURE;
+	return 0;
 }
