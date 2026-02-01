@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
+#include <pthread.h>
+#include "game.h"
 
 extern volatile sig_atomic_t serverRunning;
 
@@ -57,18 +59,23 @@ int connectionHandler(const in_port_t port)
 
 	while(serverRunning)
 	{
-		const int clientfd = accept(fd, NULL, NULL);
-		if(clientfd < 0)
+		int *clientfd = malloc(sizeof(int));
+		*clientfd = accept(fd, NULL, NULL);
+
+		if(*clientfd >= 0)
 		{
-			if(errno == EINTR)
+			pthread_t thread;
+			if(pthread_create(&thread, NULL, game_thread, clientfd) != 0)
 			{
-				continue;
+				perror("Could not create thread\n");
+				close(*clientfd);
+				free(clientfd);
+			} else
+			{
+				pthread_detach(thread);
 			}
-			fprintf(stderr, "accept");
-			continue;
 		}
 
-		fprintf(stderr, "Acceepted new connection (fd=%d)\n", clientfd);
 	}
 	return 0;
 }
